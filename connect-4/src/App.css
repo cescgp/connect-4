@@ -36,3 +36,18 @@
     transform: rotate(360deg);
   }
 }
+
+.grid-box {
+  border: 1px solid gray;
+  border-radius: 50%;
+  width: 10.31vh;
+  height: 10.31vh;
+}
+
+.selected-player-one {
+  background-color: red;
+}
+
+.selected-player-two {
+  background-color: yellow;
+}
