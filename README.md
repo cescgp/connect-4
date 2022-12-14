@@ -1,2 +1,7 @@
-# connect-4
-Juego Conecta 4 - React Typescript
+# Conecta 4
+#### Autor: fgomilapons
+Juego Conecta 4
+
+### Tecnologias 
+React 
+Typescript
