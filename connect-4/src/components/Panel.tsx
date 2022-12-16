@@ -72,7 +72,7 @@ export default class Panel extends React.Component<PanelProps, PanelState> {
                     (this.isWinner(el) ? ' winner' :
                     (el.selected === 'red' ? ' selected-player-one' : 
                         (el.selected === 'yellow' ? ' selected-player-two' : '')))}
-                onClick={() => this.playOnColumn(el, columnIndex)}
+                onClick={() => this.playOnColumn(el, columnIndex, this.state.currentPlayer)}
             />
         )
     }
@@ -81,20 +81,21 @@ export default class Panel extends React.Component<PanelProps, PanelState> {
         return this.state.winners.findIndex((w) => w.column === el.column && w.row === el.row) !== -1;
     }
     
-    private playOnColumn(el: GridBoxDto, columnIndex: number) {
+    private playOnColumn(el: GridBoxDto, columnIndex: number, currentPlayer: string) {
         let box: GridBoxDto = {...this.state.grid[this.state.grid.filter((el) => el[columnIndex].selected === 'none').length - 1][columnIndex], selected: this.state.currentPlayer}
         let newGrid: GridBoxDto[][] = [...this.state.grid];
         newGrid[this.state.grid.filter((el) => el[columnIndex].selected === 'none').length - 1][columnIndex] = box;
+        this.hasWinCheckRecusively(box, box.selected, newGrid, {up: [], down: [], left: [], right: [], ddl: [], ddr: [], dul: [], dur: []});
         this.setState({
             grid: newGrid,
-            currentPlayer: this.state.currentPlayer === 'red' ? 'yellow' : 'red'
+            currentPlayer: currentPlayer === 'red' ? 'yellow' : 'red'
         });
     }
 
     private checkWinner(currentPlayer: string) : void {
-        console.log('------------------------------------------------------');
-        this.test1(currentPlayer)
-        console.log('------------------------------------------------------');
+        // console.log('------------------------------------------------------');
+        // this.test1(currentPlayer)
+        // console.log('------------------------------------------------------');
     }
 
     private test1(currentPlayer: string) {
@@ -104,7 +105,8 @@ export default class Panel extends React.Component<PanelProps, PanelState> {
                 if(!!this.state.grid[r][c] && this.state.grid[r][c].selected === currentPlayer){
                     console.log('INIT SEARCH --- !', this.state.grid[r][c])
                     let counter = {up: [], down: [], left: [], right: [], ddl: [], ddr: [], dul: [], dur: []};
-                    this.revisarAlrededores(this.state.grid[r][c], currentPlayer, this.state.grid, this.state.grid[r][c], counter);
+                    let selected = this.checkSelectedBoxesForWinner(this.state.grid[r][c], currentPlayer, this.state.grid, this.state.grid[r][c], counter);
+                    console.log('SELECTED --- ', selected)
                     console.log('COUNTER --- ', counter)
                     if(this.hasWin(counter)) {
                         console.log('WINER', currentPlayer)
@@ -117,9 +119,16 @@ export default class Panel extends React.Component<PanelProps, PanelState> {
         // console.log('WINNERS', winners);
     }
 
-    private revisarAlrededores(box: GridBoxDto, currentPlayer: string, array: GridBoxDto[][], from: GridBoxDto, counter: GridWinnerCounter, direction?: keyof GridWinnerCounter): GridBoxDto[] {
+    private hasWinCheckRecusively(box: GridBoxDto, currentPlayer: string, array: GridBoxDto[][], counter: GridWinnerCounter): boolean {
+        this.checkSelectedBoxesForWinner(box, currentPlayer, array, box, counter);
+        console.log('hasWinCheckRecusively - counter', counter);
+        return false;
+    }
+
+    private checkSelectedBoxesForWinner(box: GridBoxDto, currentPlayer: string, array: GridBoxDto[][], from: GridBoxDto, counter: GridWinnerCounter, direction?: keyof GridWinnerCounter): GridBoxDto[] {
         let selected: GridBoxDto[] = [];
         if(box.selected === currentPlayer) {
+            console.log('selected by currentPlayer', currentPlayer)
             if(direction) {
                 if(counter[direction].findIndex((b) => b.row === box.row && b.column === box.column && b.selected === box.selected) === -1) {
                     counter[direction].push(box);
@@ -131,36 +140,36 @@ export default class Panel extends React.Component<PanelProps, PanelState> {
             } else {
                 // revisar arriba
                 if(selected.length < 4 && !!array[box.row - 1] && !!array[box.row - 1][box.column] && !this.equalsFrom(array[box.row - 1][box.column], from)) {
-                    selected.push(...this.revisarAlrededores(array[box.row - 1][box.column], currentPlayer, array, box, counter, 'up'))
+                    selected.push(...this.checkSelectedBoxesForWinner(array[box.row - 1][box.column], currentPlayer, array, box, counter, 'up'))
                 }
                 // revisar abajo
                 if(selected.length < 4 && !!array[box.row + 1] && !!array[box.row + 1][box.column] && !this.equalsFrom(array[box.row + 1][box.column], from)) {
-                    selected.push(...this.revisarAlrededores(array[box.row + 1][box.column], currentPlayer, array, box, counter, 'down'))
+                    selected.push(...this.checkSelectedBoxesForWinner(array[box.row + 1][box.column], currentPlayer, array, box, counter, 'down'))
                 }
                 //revisar izquierda
                 if(selected.length < 4 && !!array[box.row] && !!array[box.row][box.column - 1] && !this.equalsFrom(array[box.row][box.column - 1], from)) {
-                    selected.push(...this.revisarAlrededores(array[box.row][box.column - 1], currentPlayer, array, box, counter, 'left'))
+                    selected.push(...this.checkSelectedBoxesForWinner(array[box.row][box.column - 1], currentPlayer, array, box, counter, 'left'))
                 }
                 //revisar derecha
                 if(selected.length < 4 && !!array[box.row] && !!array[box.row][box.column + 1] && !this.equalsFrom(array[box.row][box.column + 1], from)) {
-                    selected.push(...this.revisarAlrededores(array[box.row][box.column + 1], currentPlayer, array, box, counter, 'right'))
+                    selected.push(...this.checkSelectedBoxesForWinner(array[box.row][box.column + 1], currentPlayer, array, box, counter, 'right'))
                 }
 
                 // revisar diagonales derecha arriba
                 if(selected.length < 4 && !!array[box.row + 1] && !!array[box.row + 1][box.column + 1] && !this.equalsFrom(array[box.row + 1][box.column + 1], from)) {
-                    selected.push(...this.revisarAlrededores(array[box.row + 1][box.column + 1], currentPlayer, array, box, counter, 'dur'))
+                    selected.push(...this.checkSelectedBoxesForWinner(array[box.row + 1][box.column + 1], currentPlayer, array, box, counter, 'dur'))
                 }
                 // revisar diagonales derecha abajo
                 if(selected.length < 4 && !!array[box.row + 1] && !!array[box.row + 1][box.column - 1] && !this.equalsFrom(array[box.row + 1][box.column - 1], from)) {
-                    selected.push(...this.revisarAlrededores(array[box.row + 1][box.column - 1], currentPlayer, array, box, counter, 'ddr' ))
+                    selected.push(...this.checkSelectedBoxesForWinner(array[box.row + 1][box.column - 1], currentPlayer, array, box, counter, 'ddr' ))
                 }
                 // revisar diagonales izquierda arriba
                 if(selected.length < 4 && !!array[box.row - 1] && !!array[box.row - 1][box.column + 1] && !this.equalsFrom(array[box.row - 1][box.column + 1], from)) {
-                    selected.push(...this.revisarAlrededores(array[box.row - 1][box.column + 1], currentPlayer, array, box, counter, 'dul' ))
+                    selected.push(...this.checkSelectedBoxesForWinner(array[box.row - 1][box.column + 1], currentPlayer, array, box, counter, 'dul' ))
                 }
                 // revisar diagonales izquierda abajo
                 if(selected.length < 4 && !!array[box.row - 1] && !!array[box.row - 1][box.column - 1] && !this.equalsFrom(array[box.row - 1][box.column - 1], from)) {
-                    selected.push(...this.revisarAlrededores(array[box.row - 1][box.column - 1], currentPlayer, array, box, counter, 'ddl'))
+                    selected.push(...this.checkSelectedBoxesForWinner(array[box.row - 1][box.column - 1], currentPlayer, array, box, counter, 'ddl'))
                 }
             }
         }
@@ -168,6 +177,7 @@ export default class Panel extends React.Component<PanelProps, PanelState> {
         return selected;
     }
     private hasWin(counter: GridWinnerCounter): boolean {
+        console.log('hasWin -> counter', counter);
         return Object.values(counter).findIndex(v => v.length >= 4) !== -1;
     }
 
