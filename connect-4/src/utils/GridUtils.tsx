@@ -1,18 +1,18 @@
-import { GridColumnDto, GridRowDto } from "../model/GridDto";
+import { GridBoxDto } from "../model/GridDto";
 
 export default class GridUtils {
-    public static generateDefaultGrid() : GridRowDto[] {
-        let gridArray: GridRowDto[] = [];
+    public static generateDefaultGrid() : GridBoxDto[][] {
+        let gridArray: GridBoxDto[][] = [];
         for(let y = 0; y < 6; y++){
-            let columns: GridColumnDto[] = [];
+            let columns: GridBoxDto[] = [];
             for(let x = 0; x < 7; x++) {
                 columns.push({
                     selected: 'none',
-                    positionX: x,
-                    positionY: y
+                    column: x,
+                    row: y
                 });
             }
-            gridArray.push({columns: columns})
+            gridArray.push([...columns])
         }
 
         return gridArray;
