@@ -103,7 +103,7 @@ export default class Panel extends React.Component<PanelProps, PanelState> {
             for(let c = 0; c < this.state.grid[r].length; c++) {
                 if(!!this.state.grid[r][c] && this.state.grid[r][c].selected === currentPlayer){
                     console.log('INIT SEARCH --- !', this.state.grid[r][c])
-                    let counter = {...COUNTER_DEFAULT_VALUE};
+                    let counter = {up: [], down: [], left: [], right: [], ddl: [], ddr: [], dul: [], dur: []};
                     this.revisarAlrededores(this.state.grid[r][c], currentPlayer, this.state.grid, this.state.grid[r][c], counter);
                     console.log('COUNTER --- ', counter)
                     if(this.hasWin(counter)) {
