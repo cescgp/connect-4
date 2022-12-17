@@ -29,12 +29,6 @@ export default class Panel extends React.Component<PanelProps, PanelState> {
         }
     }
 
-    componentDidUpdate(prevProps: Readonly<PanelProps>, prevState: Readonly<PanelState>, snapshot?: any): void {
-        if(prevState.grid !== this.state.grid) {
-            this.checkWinner(prevState.currentPlayer);
-        }
-    }
-
     render(): React.ReactNode {
         return (
             <div>
@@ -85,103 +79,92 @@ export default class Panel extends React.Component<PanelProps, PanelState> {
         let box: GridBoxDto = {...this.state.grid[this.state.grid.filter((el) => el[columnIndex].selected === 'none').length - 1][columnIndex], selected: this.state.currentPlayer}
         let newGrid: GridBoxDto[][] = [...this.state.grid];
         newGrid[this.state.grid.filter((el) => el[columnIndex].selected === 'none').length - 1][columnIndex] = box;
-        this.hasWinCheckRecusively(box, box.selected, newGrid, {up: [], down: [], left: [], right: [], ddl: [], ddr: [], dul: [], dur: []});
+        let winners = this.hasWinCheckRecusively(box, box.selected, newGrid, {up: [], down: [], left: [], right: [], ddl: [], ddr: [], dul: [], dur: []});
+        if(winners && winners.length > 0) {
+            winners.push(box);
+        }
         this.setState({
             grid: newGrid,
-            currentPlayer: currentPlayer === 'red' ? 'yellow' : 'red'
+            currentPlayer: currentPlayer === 'red' ? 'yellow' : 'red',
+            winners: winners
         });
     }
 
-    private checkWinner(currentPlayer: string) : void {
-        // console.log('------------------------------------------------------');
-        // this.test1(currentPlayer)
-        // console.log('------------------------------------------------------');
+    private hasWinCheckRecusively(box: GridBoxDto, currentPlayer: string, array: GridBoxDto[][], counter: GridWinnerCounter): GridBoxDto[] {
+        this.checkSelectedBoxesForWinner(box, currentPlayer, array, counter);
+        return Object.values(counter).filter((c) => c.length == 3).length > 0 ? Object.values(counter).filter((c) => c.length == 3)[0] : [];
     }
 
-    private test1(currentPlayer: string) {
-        let winners:GridBoxDto[] = [];
-        for(let r = 0; r < this.state.grid.length; r++) {
-            for(let c = 0; c < this.state.grid[r].length; c++) {
-                if(!!this.state.grid[r][c] && this.state.grid[r][c].selected === currentPlayer){
-                    console.log('INIT SEARCH --- !', this.state.grid[r][c])
-                    let counter = {up: [], down: [], left: [], right: [], ddl: [], ddr: [], dul: [], dur: []};
-                    let selected = this.checkSelectedBoxesForWinner(this.state.grid[r][c], currentPlayer, this.state.grid, this.state.grid[r][c], counter);
-                    console.log('SELECTED --- ', selected)
-                    console.log('COUNTER --- ', counter)
-                    if(this.hasWin(counter)) {
-                        console.log('WINER', currentPlayer)
-                        // alert('WINER! ' + currentPlayer)
-                    }
-                }
-            }
-        }
-
-        // console.log('WINNERS', winners);
-    }
-
-    private hasWinCheckRecusively(box: GridBoxDto, currentPlayer: string, array: GridBoxDto[][], counter: GridWinnerCounter): boolean {
-        this.checkSelectedBoxesForWinner(box, currentPlayer, array, box, counter);
-        console.log('hasWinCheckRecusively - counter', counter);
-        return false;
-    }
-
-    private checkSelectedBoxesForWinner(box: GridBoxDto, currentPlayer: string, array: GridBoxDto[][], from: GridBoxDto, counter: GridWinnerCounter, direction?: keyof GridWinnerCounter): GridBoxDto[] {
-        let selected: GridBoxDto[] = [];
-        if(box.selected === currentPlayer) {
-            console.log('selected by currentPlayer', currentPlayer)
-            if(direction) {
+    private checkSelectedBoxesForWinner(box: GridBoxDto, currentPlayer: string, array: GridBoxDto[][], counter: GridWinnerCounter, direction?: keyof GridWinnerCounter): void {
+        let endSearch: boolean = false;
+        if(box !== undefined && box !== null && box.selected === currentPlayer) {
+            if(direction) { // miramos hacia la misma dirección
                 if(counter[direction].findIndex((b) => b.row === box.row && b.column === box.column && b.selected === box.selected) === -1) {
                     counter[direction].push(box);
+                    if(this.checkNextDirection(box, direction, array)) {
+                        this.checkSelectedBoxesForWinner(this.getNextBoxByDirection(box, direction, array), currentPlayer, array, counter, direction);
+                    }
                 }
-            }
-            selected.push(box);
-            if (this.hasWin(counter)){
-                return selected;
-            } else {
-                // revisar arriba
-                if(selected.length < 4 && !!array[box.row - 1] && !!array[box.row - 1][box.column] && !this.equalsFrom(array[box.row - 1][box.column], from)) {
-                    selected.push(...this.checkSelectedBoxesForWinner(array[box.row - 1][box.column], currentPlayer, array, box, counter, 'up'))
-                }
-                // revisar abajo
-                if(selected.length < 4 && !!array[box.row + 1] && !!array[box.row + 1][box.column] && !this.equalsFrom(array[box.row + 1][box.column], from)) {
-                    selected.push(...this.checkSelectedBoxesForWinner(array[box.row + 1][box.column], currentPlayer, array, box, counter, 'down'))
-                }
-                //revisar izquierda
-                if(selected.length < 4 && !!array[box.row] && !!array[box.row][box.column - 1] && !this.equalsFrom(array[box.row][box.column - 1], from)) {
-                    selected.push(...this.checkSelectedBoxesForWinner(array[box.row][box.column - 1], currentPlayer, array, box, counter, 'left'))
-                }
-                //revisar derecha
-                if(selected.length < 4 && !!array[box.row] && !!array[box.row][box.column + 1] && !this.equalsFrom(array[box.row][box.column + 1], from)) {
-                    selected.push(...this.checkSelectedBoxesForWinner(array[box.row][box.column + 1], currentPlayer, array, box, counter, 'right'))
-                }
+            } else { // tenemos que revisar todas las direcciones posibles
+                let directions: any = Object.keys(counter);
+                let i = 0;
+                while(!endSearch && i < directions.length) {
+                    let dir: keyof GridWinnerCounter = directions[i];
+                    if(!!dir) {
+                        if(this.checkNextDirection(box, dir, array)) {
+                            this.checkSelectedBoxesForWinner(this.getNextBoxByDirection(box, dir, array), currentPlayer, array, counter, dir)
+                            endSearch = counter[dir].length >= 4;
+                        } 
+                        
+                    }
 
-                // revisar diagonales derecha arriba
-                if(selected.length < 4 && !!array[box.row + 1] && !!array[box.row + 1][box.column + 1] && !this.equalsFrom(array[box.row + 1][box.column + 1], from)) {
-                    selected.push(...this.checkSelectedBoxesForWinner(array[box.row + 1][box.column + 1], currentPlayer, array, box, counter, 'dur'))
-                }
-                // revisar diagonales derecha abajo
-                if(selected.length < 4 && !!array[box.row + 1] && !!array[box.row + 1][box.column - 1] && !this.equalsFrom(array[box.row + 1][box.column - 1], from)) {
-                    selected.push(...this.checkSelectedBoxesForWinner(array[box.row + 1][box.column - 1], currentPlayer, array, box, counter, 'ddr' ))
-                }
-                // revisar diagonales izquierda arriba
-                if(selected.length < 4 && !!array[box.row - 1] && !!array[box.row - 1][box.column + 1] && !this.equalsFrom(array[box.row - 1][box.column + 1], from)) {
-                    selected.push(...this.checkSelectedBoxesForWinner(array[box.row - 1][box.column + 1], currentPlayer, array, box, counter, 'dul' ))
-                }
-                // revisar diagonales izquierda abajo
-                if(selected.length < 4 && !!array[box.row - 1] && !!array[box.row - 1][box.column - 1] && !this.equalsFrom(array[box.row - 1][box.column - 1], from)) {
-                    selected.push(...this.checkSelectedBoxesForWinner(array[box.row - 1][box.column - 1], currentPlayer, array, box, counter, 'ddl'))
+                    i++;
                 }
             }
         }
-
-        return selected;
-    }
-    private hasWin(counter: GridWinnerCounter): boolean {
-        console.log('hasWin -> counter', counter);
-        return Object.values(counter).findIndex(v => v.length >= 4) !== -1;
     }
 
-    private equalsFrom(next: GridBoxDto, from: GridBoxDto): boolean {
-        return !!from && !!next && from.row === next.row && from.column === next.column;
+    private checkNextDirection(box: GridBoxDto, dir: string, array: GridBoxDto[][]): boolean {
+        switch(dir) {
+            case 'up':
+                return !!array[box.row + 1] && !!array[box.row + 1][box.column];
+            case 'down':
+                return !!array[box.row - 1] && !!array[box.row - 1][box.column];
+            case 'left':
+                return !!array[box.row] && !!array[box.row][box.column - 1];
+            case 'right':
+                return !!array[box.row] && !!array[box.row][box.column + 1];
+            case 'ddl':
+                return !!array[box.row - 1] && !!array[box.row - 1][box.column - 1];
+            case 'ddr':
+                return !!array[box.row - 1] && !!array[box.row - 1][box.column + 1];
+            case 'dul':
+                return !!array[box.row + 1] && !!array[box.row + 1][box.column - 1];
+            case 'dur':
+                return !!array[box.row + 1] && !!array[box.row + 1][box.column + 1];
+            default: 
+                return false;
+        }
+    }
+    
+    private getNextBoxByDirection(box: GridBoxDto, direction: keyof GridWinnerCounter, array: GridBoxDto[][]): GridBoxDto {
+        switch(direction) {
+            case 'up':
+                return array[box.row + 1][box.column];
+            case 'down':
+                return array[box.row - 1][box.column];
+            case 'left':
+                return array[box.row][box.column - 1];
+            case 'right':
+                return array[box.row][box.column + 1];
+            case 'ddl':
+                return array[box.row - 1][box.column - 1];
+            case 'ddr':
+                return array[box.row - 1][box.column + 1];
+            case 'dul':
+                return array[box.row + 1][box.column - 1];
+            case 'dur':
+                return array[box.row + 1][box.column + 1];
+        }
     }
 }
