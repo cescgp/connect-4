@@ -5,3 +5,6 @@ Juego Conecta 4
 ### Tecnologias 
 React 
 Typescript
+
+
+In progres...
