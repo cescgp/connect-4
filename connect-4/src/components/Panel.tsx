@@ -5,6 +5,8 @@ import CardHeader from "react-bootstrap/esm/CardHeader";
 import { threadId } from "worker_threads";
 import { brotliCompress } from "zlib";
 import { GridBoxDto, GridWinnerCounter } from "../model/GridDto";
+import { animated, useSpring } from "@react-spring/web";
+import Box from "./Box";
 
 export interface PanelProps {
     grid: GridBoxDto[][];
@@ -14,6 +16,7 @@ export interface PanelState {
     grid: GridBoxDto[][];
     currentPlayer: 'red' | 'yellow'
     winners: GridBoxDto[];
+    hoverColumn: number;
 }
 
 const COUNTER_DEFAULT_VALUE: GridWinnerCounter =  {up: [], down: [], left: [], right: [], ddl: [], ddr: [], dul: [], dur: []}
@@ -25,9 +28,10 @@ export default class Panel extends React.Component<PanelProps, PanelState> {
         this.state = {
             grid: this.props.grid,
             currentPlayer: 'red',
-            winners: []
+            winners: [],
+            hoverColumn: -1
         }
-    }
+    }    
 
     render(): React.ReactNode {
         return (
@@ -52,7 +56,13 @@ export default class Panel extends React.Component<PanelProps, PanelState> {
             return (
                 <Row key={'row_' + rowIndex} className="d-flex justify-content-center">
                     {el.map((c, columnIndex) => {
-                        return <Col key={'column_' + rowIndex + '_' + columnIndex} className="d-flex justify-content-center p-0 m-0">{this.renderBox(c, rowIndex, columnIndex)}</Col>
+                        return <Col 
+                                    onMouseEnter={() => this.setState({hoverColumn: columnIndex})}
+                                    onMouseLeave={() => this.setState({hoverColumn: -1})}
+                                    key={'column_' + rowIndex + '_' + columnIndex} 
+                                    className={'d-flex justify-content-center p-0 m-0' + (this.state.hoverColumn === columnIndex ? ' bg-light cursor-pointer' : '')}>
+                                        {this.renderBox(c, rowIndex, columnIndex)}
+                                </Col>
                     })}
                 </Row>);        
         })
@@ -62,10 +72,10 @@ export default class Panel extends React.Component<PanelProps, PanelState> {
         return (
             <div 
                 key={'box_' + rowIndex +'_' + columnIndex}
-                className={'grid-box m-2 cursor-pointer' + 
-                    (this.isWinner(el) ? ' winner' :
+                className={'grid-box m-2 cursor-pointer' +
                     (el.selected === 'red' ? ' selected-player-one' : 
-                        (el.selected === 'yellow' ? ' selected-player-two' : '')))}
+                        (el.selected === 'yellow' ? ' selected-player-two' : '')) + 
+                        (this.isWinner(el) ? ' winner' : '')}
                 onClick={() => this.playOnColumn(el, columnIndex, this.state.currentPlayer)}
             />
         )
@@ -76,18 +86,20 @@ export default class Panel extends React.Component<PanelProps, PanelState> {
     }
     
     private playOnColumn(el: GridBoxDto, columnIndex: number, currentPlayer: string) {
-        let box: GridBoxDto = {...this.state.grid[this.state.grid.filter((el) => el[columnIndex].selected === 'none').length - 1][columnIndex], selected: this.state.currentPlayer}
-        let newGrid: GridBoxDto[][] = [...this.state.grid];
-        newGrid[this.state.grid.filter((el) => el[columnIndex].selected === 'none').length - 1][columnIndex] = box;
-        let winners = this.hasWinCheckRecusively(box, box.selected, newGrid, {up: [], down: [], left: [], right: [], ddl: [], ddr: [], dul: [], dur: []});
-        if(winners && winners.length > 0) {
-            winners.push(box);
+        if(this.state.winners.length === 0) {
+            let box: GridBoxDto = {...this.state.grid[this.state.grid.filter((el) => el[columnIndex].selected === 'none').length - 1][columnIndex], selected: this.state.currentPlayer}
+            let newGrid: GridBoxDto[][] = [...this.state.grid];
+            newGrid[this.state.grid.filter((el) => el[columnIndex].selected === 'none').length - 1][columnIndex] = box;
+            let winners = this.hasWinCheckRecusively(box, box.selected, newGrid, {up: [], down: [], left: [], right: [], ddl: [], ddr: [], dul: [], dur: []});
+            if(winners && winners.length > 0) {
+                winners.push(box);
+            }
+            this.setState({
+                grid: newGrid,
+                currentPlayer: currentPlayer === 'red' ? 'yellow' : 'red',
+                winners: winners
+            });
         }
-        this.setState({
-            grid: newGrid,
-            currentPlayer: currentPlayer === 'red' ? 'yellow' : 'red',
-            winners: winners
-        });
     }
 
     private hasWinCheckRecusively(box: GridBoxDto, currentPlayer: string, array: GridBoxDto[][], counter: GridWinnerCounter): GridBoxDto[] {

@@ -53,5 +53,5 @@
 }
 
 .winner {
-  background-color: purple;
+  border: 2px solid purple;
 }
